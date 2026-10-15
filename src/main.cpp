@@ -92,10 +92,21 @@ void init()
 	glOrtho(0, 1280, 0, 720, -1, 1);
 }
 
-void projekce(int x, int y, int z)
+void bod(int x, int y, int z)
 {
-	glVertex2i();
+	glVertex2i(x*200/(500-z) +640, y*200/(500-z) +360);
 }
+/*
+ *
+ * x=x *200/(400-hloubka)
+ * y=y *200(400-hloubka)
+ *
+ *
+ *
+ *
+*/
+
+
 void render(double dt)
 {
 	//glBegin(GL_LINE_STRIP);
@@ -124,6 +135,34 @@ void render(double dt)
 	}
 
 	glEnd();
+
+
+	glBegin(GL_LINE_STRIP);
+	glColor3ub(0, 0, 0);
+
+	bod(100,100,100);
+	bod(-100,100,100);
+	bod(-100,-100,100);
+	bod(100,-100,100);
+	bod(100,100,100);
+	bod(100,100,-100);
+	bod(-100,100,-100);
+	bod(-100,-100,-100);
+	bod(100,-100,-100);
+	bod(100,100,-100);
+	glEnd();
+	glBegin(GL_LINE_STRIP);
+	bod(-100,100,100);
+	bod(-100,100,-100);
+	bod(-100,-100,-100);
+	bod(-100,-100,100);
+	bod(100,-100,100);
+	bod(100,-100,-100);
+
+
+	glEnd();
+
+
 }
 
 int main()
@@ -164,7 +203,7 @@ int main()
 		if(total_time > 3.0)
 		{
 			double fps = ticks / total_time;
-			cout << "FPS: " << fps << " (" << (total_time / ticks * 1000) << " ms), max " << (max_delta * 1000) << " ms" << endl;
+			cout << "FPS: " << fps << " (" << (total_time / ticks * 100) << " ms), max " << (max_delta * 100) << " ms" << endl;
 			
 			total_time = 0;
 			ticks = 0;
