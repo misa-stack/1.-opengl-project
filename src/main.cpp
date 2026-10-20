@@ -1,3 +1,4 @@
+// https://github.com/misa-stack/1.-opengl-project
 #include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -36,9 +37,8 @@ void glfw_mouse_move_callback(GLFWwindow * window, double xpos, double ypos)
 bool createWindow(int width, int height, string title, bool vsync, bool core = true)
 {
 	if (glfw_window) return false;
-	if (!glfwInit()) return false;
-	
 	glfwSetErrorCallback(glfw_error_callback);
+	if (!glfwInit()) return false;
 
 	if(core)
 	{
@@ -70,11 +70,19 @@ bool createWindow(int width, int height, string title, bool vsync, bool core = t
 	cout << "Shading language: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
 	
 	// load OpenGL functions using GLEW
-	if (glewInit() != GLEW_OK)
+	GLenum glew_result = glewInit();
+#if defined(GLEW_ERROR_NO_GLX_DISPLAY) && defined(GLFW_PLATFORM_WAYLAND)
+	// Wayland uses EGL; GLEW has loaded OpenGL even when its GLX setup is unavailable.
+	if (glew_result == GLEW_ERROR_NO_GLX_DISPLAY && glfwGetPlatform() == GLFW_PLATFORM_WAYLAND)
+		glew_result = GLEW_OK;
+#endif
+	if (glew_result != GLEW_OK)
 	{
+		cerr << "GLEW initialization failed: " << glewGetErrorString(glew_result) << endl;
 		glfwDestroyWindow(glfw_window);
 		glfw_window = NULL;
 		glfwTerminate();
+		return false;
 	}
 	
 	cout << "GLEW" << endl;
@@ -96,73 +104,66 @@ void bod(int x, int y, int z)
 {
 	glVertex2i(x*200/(500-z) +640, y*200/(500-z) +360);
 }
-/*
- *
- * x=x *200/(400-hloubka)
- * y=y *200(400-hloubka)
- *
- *
- *
- *
-*/
-
+// Jedna cara mezi dvema body ve 3D.
+void cara(int x1, int y1, int z1, int x2, int y2, int z2)
+{
+	bod(x1, y1, z1);
+	bod(x2, y2, z2);
+}
 
 void render(double dt)
 {
-	//glBegin(GL_LINE_STRIP);
+	// Puvodni kreslici plocha 1280x720 zustane uprostred okna.
+	int width, height;
+	glfwGetFramebufferSize(glfw_window, &width, &height);
+	glViewport((width - 1280) / 2, (height - 720) / 2, 1280, 720);
 
-	glBegin(GL_LINE_STRIP);
-	int r = 200;
-	int x = 640;
-	int y = 360;
-	for(int z = 0;z <r;z++)
-	{
-		glColor3ub(255, 0, 0);
-		glVertex2i(x+z, y);
-		glVertex2i(x+z, y-sqrt(r*r-z*z));
-		glVertex2i(x-z, y);
-		glVertex2i(x-z, y-sqrt(r*r-z*z));
-		glVertex2i(x-z, y);
-		glVertex2i(x-z, y+sqrt(r*r-z*z));
-		glVertex2i(x+z, y);
-		glVertex2i(x+z, y+sqrt(r*r-z*z));
-		/*
-	    cara(x+z,y,x+z,y-sqrt(r*r-z*z));
-	    cara(x-z,y,x-z,y-sqrt(r*r-z*z));
-	    cara(x-z,y,x-z,y+sqrt(r*r-z*z));
-	    cara(x+z,y,x+z,y+sqrt(r*r-z*z));
-	    */
-	}
-
-	glEnd();
-
-
-	glBegin(GL_LINE_STRIP);
 	glColor3ub(0, 0, 0);
+	glBegin(GL_LINES);
 
-	bod(100,100,100);
-	bod(-100,100,100);
-	bod(-100,-100,100);
-	bod(100,-100,100);
-	bod(100,100,100);
-	bod(100,100,-100);
-	bod(-100,100,-100);
-	bod(-100,-100,-100);
-	bod(100,-100,-100);
-	bod(100,100,-100);
+	// Predni stena: x je sirka, y vyska, z hloubka.
+	cara(-250, -200, 175, 250, -200, 175);
+	cara(250, -200, 175, 250, 100, 175);
+	cara(250, 100, 175, -250, 100, 175);
+	cara(-250, 100, 175, -250, -200, 175);
+
+	// Zadni stena.
+	cara(-250, -200, -175, 250, -200, -175);
+	cara(250, -200, -175, 250, 100, -175);
+	cara(250, 100, -175, -250, 100, -175);
+	cara(-250, 100, -175, -250, -200, -175);
+
+	// Spojeni predni a zadni steny.
+	cara(-250, -200, 175, -250, -200, -175);
+	cara(250, -200, 175, 250, -200, -175);
+	cara(250, 100, 175, 250, 100, -175);
+	cara(-250, 100, 175, -250, 100, -175);
+
+	// Strecha: dva trojuhelniky spojene hrebenem.
+	cara(-250, 100, 175, 0, 250, 175);
+	cara(0, 250, 175, 250, 100, 175);
+	cara(-250, 100, -175, 0, 250, -175);
+	cara(0, 250, -175, 250, 100, -175);
+	cara(0, 250, 175, 0, 250, -175);
+
+	// Dvere na predni stene; spodni hrana uz je soucast steny.
+	cara(-40, -200, 175, -40, -40, 175);
+	cara(-40, -40, 175, 40, -40, 175);
+	cara(40, -40, 175, 40, -200, 175);
+
+	// Leve okno.
+	cara(-190, -35, 175, -100, -35, 175);
+	cara(-100, -35, 175, -100, 45, 175);
+	cara(-100, 45, 175, -190, 45, 175);
+	cara(-190, 45, 175, -190, -35, 175);
+
+	// Prave okno.
+	cara(100, -35, 175, 190, -35, 175);
+	cara(190, -35, 175, 190, 45, 175);
+	cara(190, 45, 175, 100, 45, 175);
+	cara(100, 45, 175, 100, -35, 175);
+
 	glEnd();
-	glBegin(GL_LINE_STRIP);
-	bod(-100,100,100);
-	bod(-100,100,-100);
-	bod(-100,-100,-100);
-	bod(-100,-100,100);
-	bod(100,-100,100);
-	bod(100,-100,-100);
-
-
-	glEnd();
-
-
 }
 
 int main()

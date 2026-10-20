@@ -1,3 +1,24 @@
+ifneq ($(OS),Windows_NT)
+
+# Keep existing Qt Creator Make projects working with the CMake dependency setup.
+CMAKE_BUILD_DIR ?= build
+.DEFAULT_GOAL := all
+.PHONY: all run clean
+
+all:
+	cmake -S . -B "$(CMAKE_BUILD_DIR)" -DCMAKE_BUILD_TYPE=Debug
+	cmake --build "$(CMAKE_BUILD_DIR)" --parallel
+	cmake -E copy_if_different "$(CMAKE_BUILD_DIR)/opengl" ./opengl
+
+run: all
+	./opengl
+
+clean:
+	if [ -f "$(CMAKE_BUILD_DIR)/CMakeCache.txt" ]; then cmake --build "$(CMAKE_BUILD_DIR)" --target clean; fi
+	rm -f ./opengl
+
+else
+
 ifeq ($(OS),Windows_NT)
 	DIR_SEP = \\
 	MKDIR = @mkdir
@@ -48,7 +69,7 @@ run: all
 	.$(DIR_SEP)$(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(LINKER) $(LFLAGS) $^ -o $(TARGET) $(LFLAGS2)
+	$(LINKER) $^ -o $(TARGET) $(LFLAGS) $(LFLAGS2)
 
 checkdirs: $(BUILD_DIR)
 
@@ -62,5 +83,7 @@ clean:
 $(foreach bdir,$(BUILD_DIR),$(eval $(call make-goal,$(bdir))))
 
 -include $(DEPS)
+
+endif
 
 

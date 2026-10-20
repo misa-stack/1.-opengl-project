@@ -1,0 +1,65 @@
+# CMake, Make, and Qt Creator build directories
+/build/
+/build-*/
+/cmake-build-*/
+/tmp/
+
+# CMake/Ninja files from an in-source build
+/CMakeCache.txt
+/CMakeFiles/
+/.cmake/
+/_deps/
+/cmake_install.cmake
+/install_manifest.txt
+/CTestTestfile.cmake
+/Testing/
+/compile_commands.json
+/build.ninja
+/rules.ninja
+/.ninja_deps
+/.ninja_log
+
+# Application binaries and copied runtime libraries
+/opengl
+/opengl.exe
+/glew32.dll
+/glfw3.dll
+
+# Compiler and linker intermediates
+*.o
+*.obj
+*.d
+*.gch
+*.pch
+*.pdb
+*.ilk
+*.idb
+*.tlog
+
+# Qt Creator local settings, code-model cache, and recovery files
+.qtcreator/
+.qtc_clangd/
+*.user
+*.user.*
+*.autosave
+
+# Visual Studio local settings and build outputs
+.vs/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+
+# Editor backups and operating-system metadata
+*~
+.*.swp
+.*.swo
+.DS_Store
+Thumbs.db
+
+# Bundled dependencies in include/, lib/, and lib-mingw32/ belong in Git.
