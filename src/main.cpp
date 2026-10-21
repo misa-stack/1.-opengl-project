@@ -100,11 +100,26 @@ void init()
 	glOrtho(0, 1280, 0, 720, -1, 1);
 }
 
-void bod(int x, int y, int z)
+double angleX = 0.0;
+double angleY = 0.0;
+double angleZ = 0.0;
+
+void bod(double x, double y, double z)
 {
-	glVertex2i(x*200/(500-z) +640, y*200/(500-z) +360);
+	// Rotate around X: change height and depth.
+	const double yAfterX = y * cos(angleX) - z * sin(angleX);
+	const double zAfterX = y * sin(angleX) + z * cos(angleX);
+
+	// Rotate around Y: change width and depth using the result above.
+	const double xAfterY = x * cos(angleY) + zAfterX * sin(angleY);
+	const double zAfterY = -x * sin(angleY) + zAfterX * cos(angleY);
+
+	// Rotate around Z: turn the point in the screen's horizontal/vertical plane.
+	const double rotatedX = xAfterY * cos(angleZ) - yAfterX * sin(angleZ);
+	const double rotatedY = xAfterY * sin(angleZ) + yAfterX * cos(angleZ);
+
+	glVertex2d(rotatedX * 200 / (500 - zAfterY) + 640, rotatedY * 200 / (500 - zAfterY) + 360);
 }
-// Jedna cara mezi dvema body ve 3D.
 void cara(int x1, int y1, int z1, int x2, int y2, int z2)
 {
 	bod(x1, y1, z1);
@@ -113,7 +128,27 @@ void cara(int x1, int y1, int z1, int x2, int y2, int z2)
 
 void render(double dt)
 {
-	// Puvodni kreslici plocha 1280x720 zustane uprostred okna.
+	constexpr double pi = 3.14159265358979323846;
+	const double rotationStep = 60.0 * pi / 180.0 * dt;
+
+	const int directionX = (glfwGetKey(glfw_window, GLFW_KEY_UP) == GLFW_PRESS)
+		- (glfwGetKey(glfw_window, GLFW_KEY_DOWN) == GLFW_PRESS);
+	const int directionY = (glfwGetKey(glfw_window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		- (glfwGetKey(glfw_window, GLFW_KEY_LEFT) == GLFW_PRESS);
+	const int directionZ = (glfwGetKey(glfw_window, GLFW_KEY_E) == GLFW_PRESS)
+		- (glfwGetKey(glfw_window, GLFW_KEY_Q) == GLFW_PRESS);
+
+	angleX = fmod(angleX + directionX * rotationStep, 2.0 * pi);
+	angleY = fmod(angleY + directionY * rotationStep, 2.0 * pi);
+	angleZ = fmod(angleZ + directionZ * rotationStep, 2.0 * pi);
+
+	if (glfwGetKey(glfw_window, GLFW_KEY_R) == GLFW_PRESS)
+	{
+		angleX = 0.0;
+		angleY = 0.0;
+		angleZ = 0.0;
+	}
+
 	int width, height;
 	glfwGetFramebufferSize(glfw_window, &width, &height);
 	glViewport((width - 1280) / 2, (height - 720) / 2, 1280, 720);
