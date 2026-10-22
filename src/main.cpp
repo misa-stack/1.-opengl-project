@@ -45,6 +45,7 @@ bool createWindow(int width, int height, string title, bool vsync, bool core = t
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	}
+	glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
 	// create window using GLFW
 	if (!(glfw_window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL)))
@@ -96,7 +97,17 @@ void init()
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, 1280, 0, 720, -1, 1);
+	// Match the old 200-pixel focal length, now with real perspective depth.
+	constexpr double pi = 3.14159265358979323846;
+	const double fovY = 2.0 * atan(360.0 / 200.0) * 180.0 / pi;
+	makeFrustum(fovY, 1280.0 / 720.0, 1.0, 5000.0);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glTranslated(0.0, 0.0, -500.0);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
 }
 
 double angleX = 0.0;
@@ -129,7 +140,8 @@ void bod(double x, double y, double z)
 	const double translatedX = rotatedX + positionX;
 	const double translatedY = rotatedY + positionY;
 
-	glVertex2d(translatedX * 200 / (500 - zAfterY) + 640, translatedY * 200 / (500 - zAfterY) + 360);
+
+	glVertex3d(translatedX, translatedY, zAfterY);
 }
 void cara(int x1, int y1, int z1, int x2, int y2, int z2)
 {
@@ -172,11 +184,6 @@ void render(double dt)
 		scale -= 0.01;
 	}
 
-
-
-
-
-
 	if (glfwGetKey(glfw_window, GLFW_KEY_R) == GLFW_PRESS)
 	{
 		angleX = 0.0;
@@ -191,50 +198,79 @@ void render(double dt)
 	glfwGetFramebufferSize(glfw_window, &width, &height);
 	glViewport((width - 1280) / 2, (height - 720) / 2, 1280, 720);
 
+	if (scale == 0.0) return;
+
+	// Move the camera (0, 0, 500) into the house's original coordinates:
+	// undo translation, then Z/Y/X rotations, then scaling.
+	const double cameraXAfterZ = -positionX * cos(angleZ) - positionY * sin(angleZ);
+	const double cameraYAfterZ = positionX * sin(angleZ) - positionY * cos(angleZ);
+	const double cameraZAfterY = cameraXAfterZ * sin(angleY) + 500.0 * cos(angleY);
+	const double cameraX = (cameraXAfterZ * cos(angleY) - 500.0 * sin(angleY)) / scale;
+	const double cameraY = (cameraYAfterZ * cos(angleX) + cameraZAfterY * sin(angleX)) / scale;
+	const double cameraZ = (-cameraYAfterZ * sin(angleX) + cameraZAfterY * cos(angleX)) / scale;
+
+	// This house is convex. An edge is visible when either adjacent face
+	// points toward the camera; no filled polygons are needed.
+	bool front = cameraZ > 175.0;
+	bool back = cameraZ < -175.0;
+	bool left = cameraX < -250.0;
+	bool right = cameraX > 250.0;
+	bool bottom = cameraY < -200.0;
+	// Roof planes: y = 0.6*x + 250 and y = -0.6*x + 250.
+	bool roofLeft = cameraY - 0.6 * cameraX > 250.0;
+	bool roofRight = cameraY + 0.6 * cameraX > 250.0;
+
+	// From inside the house, all surrounding faces can be seen.
+	if (!front && !back && !left && !right && !bottom && !roofLeft && !roofRight)
+	{
+		front = back = left = right = bottom = roofLeft = roofRight = true;
+	}
+
 	glColor3ub(0, 0, 0);
 	glBegin(GL_LINES);
 
 	// Predni stena: x je sirka, y vyska, z hloubka.
-	cara(-250, -200, 175, 250, -200, 175);
-	cara(250, -200, 175, 250, 100, 175);
-	cara(250, 100, 175, -250, 100, 175);
-	cara(-250, 100, 175, -250, -200, 175);
+	if (front || bottom) cara(-250, -200, 175, 250, -200, 175);
+	if (front || right) cara(250, -200, 175, 250, 100, 175);
+	if (front) cara(250, 100, 175, -250, 100, 175);
+	if (front || left) cara(-250, 100, 175, -250, -200, 175);
 
 	// Zadni stena.
-	cara(-250, -200, -175, 250, -200, -175);
-	cara(250, -200, -175, 250, 100, -175);
-	cara(250, 100, -175, -250, 100, -175);
-	cara(-250, 100, -175, -250, -200, -175);
+	if (back || bottom) cara(-250, -200, -175, 250, -200, -175);
+	if (back || right) cara(250, -200, -175, 250, 100, -175);
+	if (back) cara(250, 100, -175, -250, 100, -175);
+	if (back || left) cara(-250, 100, -175, -250, -200, -175);
 
 	// Spojeni predni a zadni steny.
-	cara(-250, -200, 175, -250, -200, -175);
-	cara(250, -200, 175, 250, -200, -175);
-	cara(250, 100, 175, 250, 100, -175);
-	cara(-250, 100, 175, -250, 100, -175);
+	if (left || bottom) cara(-250, -200, 175, -250, -200, -175);
+	if (right || bottom) cara(250, -200, 175, 250, -200, -175);
+	if (right || roofRight) cara(250, 100, 175, 250, 100, -175);
+	if (left || roofLeft) cara(-250, 100, 175, -250, 100, -175);
 
 	// Strecha: dva trojuhelniky spojene hrebenem.
-	cara(-250, 100, 175, 0, 250, 175);
-	cara(0, 250, 175, 250, 100, 175);
-	cara(-250, 100, -175, 0, 250, -175);
-	cara(0, 250, -175, 250, 100, -175);
-	cara(0, 250, 175, 0, 250, -175);
+	if (front || roofLeft) cara(-250, 100, 175, 0, 250, 175);
+	if (front || roofRight) cara(0, 250, 175, 250, 100, 175);
+	if (back || roofLeft) cara(-250, 100, -175, 0, 250, -175);
+	if (back || roofRight) cara(0, 250, -175, 250, 100, -175);
+	if (roofLeft || roofRight) cara(0, 250, 175, 0, 250, -175);
 
-	// Dvere na predni stene; spodni hrana uz je soucast steny.
-	cara(-40, -200, 175, -40, -40, 175);
-	cara(-40, -40, 175, 40, -40, 175);
-	cara(40, -40, 175, 40, -200, 175);
+	// Dvere a okna jsou videt jen z predni strany.
+	if (front)
+	{
+		cara(-40, -200, 175, -40, -40, 175);
+		cara(-40, -40, 175, 40, -40, 175);
+		cara(40, -40, 175, 40, -200, 175);
 
-	// Leve okno.
-	cara(-190, -35, 175, -100, -35, 175);
-	cara(-100, -35, 175, -100, 45, 175);
-	cara(-100, 45, 175, -190, 45, 175);
-	cara(-190, 45, 175, -190, -35, 175);
+		cara(-190, -35, 175, -100, -35, 175);
+		cara(-100, -35, 175, -100, 45, 175);
+		cara(-100, 45, 175, -190, 45, 175);
+		cara(-190, 45, 175, -190, -35, 175);
 
-	// Prave okno.
-	cara(100, -35, 175, 190, -35, 175);
-	cara(190, -35, 175, 190, 45, 175);
-	cara(190, 45, 175, 100, 45, 175);
-	cara(100, 45, 175, 100, -35, 175);
+		cara(100, -35, 175, 190, -35, 175);
+		cara(190, -35, 175, 190, 45, 175);
+		cara(190, 45, 175, 100, 45, 175);
+		cara(100, 45, 175, 100, -35, 175);
+	}
 
 	glEnd();
 }
