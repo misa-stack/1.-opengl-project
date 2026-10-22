@@ -1,4 +1,3 @@
-// https://github.com/misa-stack/1.-opengl-project
 #include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -103,22 +102,34 @@ void init()
 double angleX = 0.0;
 double angleY = 0.0;
 double angleZ = 0.0;
+double positionX = 0.0;
+double positionY = 0.0;
+double scale = 1.0;
 
 void bod(double x, double y, double z)
 {
-	// Rotate around X: change height and depth.
+
+	x *= scale;
+	y *= scale;
+	z *= scale;
+
+
 	const double yAfterX = y * cos(angleX) - z * sin(angleX);
 	const double zAfterX = y * sin(angleX) + z * cos(angleX);
 
-	// Rotate around Y: change width and depth using the result above.
+
 	const double xAfterY = x * cos(angleY) + zAfterX * sin(angleY);
 	const double zAfterY = -x * sin(angleY) + zAfterX * cos(angleY);
 
-	// Rotate around Z: turn the point in the screen's horizontal/vertical plane.
+
 	const double rotatedX = xAfterY * cos(angleZ) - yAfterX * sin(angleZ);
 	const double rotatedY = xAfterY * sin(angleZ) + yAfterX * cos(angleZ);
 
-	glVertex2d(rotatedX * 200 / (500 - zAfterY) + 640, rotatedY * 200 / (500 - zAfterY) + 360);
+
+	const double translatedX = rotatedX + positionX;
+	const double translatedY = rotatedY + positionY;
+
+	glVertex2d(translatedX * 200 / (500 - zAfterY) + 640, translatedY * 200 / (500 - zAfterY) + 360);
 }
 void cara(int x1, int y1, int z1, int x2, int y2, int z2)
 {
@@ -142,11 +153,38 @@ void render(double dt)
 	angleY = fmod(angleY + directionY * rotationStep, 2.0 * pi);
 	angleZ = fmod(angleZ + directionZ * rotationStep, 2.0 * pi);
 
+
+	const double movementStep = 200.0 * dt;
+	const int movementX = (glfwGetKey(glfw_window, GLFW_KEY_D) == GLFW_PRESS)
+		- (glfwGetKey(glfw_window, GLFW_KEY_A) == GLFW_PRESS);
+	const int movementY = (glfwGetKey(glfw_window, GLFW_KEY_W) == GLFW_PRESS)
+		- (glfwGetKey(glfw_window, GLFW_KEY_S) == GLFW_PRESS);
+	positionX += movementX * movementStep;
+	positionY += movementY * movementStep;
+
+
+	if (glfwGetKey(glfw_window, GLFW_KEY_1) == GLFW_PRESS)
+	{
+		scale += 0.01;
+	}
+	else if (glfwGetKey(glfw_window, GLFW_KEY_2) == GLFW_PRESS)
+	{
+		scale -= 0.01;
+	}
+
+
+
+
+
+
 	if (glfwGetKey(glfw_window, GLFW_KEY_R) == GLFW_PRESS)
 	{
 		angleX = 0.0;
 		angleY = 0.0;
 		angleZ = 0.0;
+		positionX = 0.0;
+		positionY = 0.0;
+		scale = 1.0;
 	}
 
 	int width, height;
