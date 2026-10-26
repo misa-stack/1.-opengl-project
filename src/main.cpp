@@ -3,12 +3,17 @@
 #include <GLFW/glfw3.h>
 #include <math.h>
 
-#include "utils.h"
+#include "camera.h"
 
 using namespace std;
 
 GLFWwindow * glfw_window = NULL;
 bool keep_running = true;
+Camera camera;
+bool controlCamera = true;
+bool mouseLooking = false;
+double lastMouseX = 0.0;
+double lastMouseY = 0.0;
 
 void glfw_error_callback(int error, const char * description)
 {
@@ -21,16 +26,35 @@ void glfw_key_callback(GLFWwindow * window, int key, int scancode, int action, i
 	{
 		keep_running = false;
 	}
+	if (key == GLFW_KEY_TAB && action == GLFW_PRESS)
+	{
+		controlCamera = !controlCamera;
+		cout << "WASD controls: " << (controlCamera ? "camera" : "house") << endl;
+	}
 }
 
 void glfw_mouse_click_callback(GLFWwindow * window, int button, int action, int mods)
 {
-
+	if (button != GLFW_MOUSE_BUTTON_RIGHT) return;
+	mouseLooking = action == GLFW_PRESS;
+	if (mouseLooking) glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
+	glfwSetInputMode(window, GLFW_CURSOR, mouseLooking ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 }
 
 void glfw_mouse_move_callback(GLFWwindow * window, double xpos, double ypos)
 {
+	if (mouseLooking) camera.look(xpos - lastMouseX, ypos - lastMouseY);
+	lastMouseX = xpos;
+	lastMouseY = ypos;
+}
 
+void glfw_focus_callback(GLFWwindow * window, int focused)
+{
+	if (!focused)
+	{
+		mouseLooking = false;
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
 }
 
 bool createWindow(int width, int height, string title, bool vsync, bool core = true)
@@ -59,6 +83,7 @@ bool createWindow(int width, int height, string title, bool vsync, bool core = t
 	glfwSetKeyCallback(glfw_window, glfw_key_callback);
 	glfwSetMouseButtonCallback(glfw_window, glfw_mouse_click_callback);
 	glfwSetCursorPosCallback(glfw_window, glfw_mouse_move_callback);
+	glfwSetWindowFocusCallback(glfw_window, glfw_focus_callback);
 	
 	glfwMakeContextCurrent(glfw_window);
 	
@@ -97,14 +122,10 @@ void init()
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	// Match the old 200-pixel focal length, now with real perspective depth.
-	constexpr double pi = 3.14159265358979323846;
-	const double fovY = 2.0 * atan(360.0 / 200.0) * 180.0 / pi;
-	makeFrustum(fovY, 1280.0 / 720.0, 1.0, 5000.0);
-
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	glTranslated(0.0, 0.0, -500.0);
+	// Camera::projectLine already computes the view, clipping and projection.
+	// OpenGL receives normalized coordinates and only rasterizes our lines.
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
@@ -117,7 +138,7 @@ double positionX = 0.0;
 double positionY = 0.0;
 double scale = 1.0;
 
-void bod(double x, double y, double z)
+Vec3 bod(double x, double y, double z)
 {
 
 	x *= scale;
@@ -141,12 +162,16 @@ void bod(double x, double y, double z)
 	const double translatedY = rotatedY + positionY;
 
 
-	glVertex3d(translatedX, translatedY, zAfterY);
+	return {translatedX, translatedY, zAfterY};
 }
 void cara(int x1, int y1, int z1, int x2, int y2, int z2)
 {
-	bod(x1, y1, z1);
-	bod(x2, y2, z2);
+	Vec3 first, second;
+	if (camera.projectLine(bod(x1, y1, z1), bod(x2, y2, z2), first, second))
+	{
+		glVertex3d(first.x, first.y, first.z);
+		glVertex3d(second.x, second.y, second.z);
+	}
 }
 
 void render(double dt)
@@ -171,8 +196,18 @@ void render(double dt)
 		- (glfwGetKey(glfw_window, GLFW_KEY_A) == GLFW_PRESS);
 	const int movementY = (glfwGetKey(glfw_window, GLFW_KEY_W) == GLFW_PRESS)
 		- (glfwGetKey(glfw_window, GLFW_KEY_S) == GLFW_PRESS);
-	positionX += movementX * movementStep;
-	positionY += movementY * movementStep;
+	if (controlCamera)
+	{
+		const int vertical = (glfwGetKey(glfw_window, GLFW_KEY_SPACE) == GLFW_PRESS)
+			- (glfwGetKey(glfw_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
+				|| glfwGetKey(glfw_window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS);
+		camera.move(movementX, movementY, vertical, dt);
+	}
+	else
+	{
+		positionX += movementX * movementStep;
+		positionY += movementY * movementStep;
+	}
 
 
 	if (glfwGetKey(glfw_window, GLFW_KEY_1) == GLFW_PRESS)
@@ -192,6 +227,7 @@ void render(double dt)
 		positionX = 0.0;
 		positionY = 0.0;
 		scale = 1.0;
+		camera.reset();
 	}
 
 	int width, height;
@@ -200,12 +236,14 @@ void render(double dt)
 
 	if (scale == 0.0) return;
 
-	// Move the camera (0, 0, 500) into the house's original coordinates:
+	// Move the current world-space camera into the house's original coordinates:
 	// undo translation, then Z/Y/X rotations, then scaling.
-	const double cameraXAfterZ = -positionX * cos(angleZ) - positionY * sin(angleZ);
-	const double cameraYAfterZ = positionX * sin(angleZ) - positionY * cos(angleZ);
-	const double cameraZAfterY = cameraXAfterZ * sin(angleY) + 500.0 * cos(angleY);
-	const double cameraX = (cameraXAfterZ * cos(angleY) - 500.0 * sin(angleY)) / scale;
+	const double relativeX = camera.position.x - positionX;
+	const double relativeY = camera.position.y - positionY;
+	const double cameraXAfterZ = relativeX * cos(angleZ) + relativeY * sin(angleZ);
+	const double cameraYAfterZ = -relativeX * sin(angleZ) + relativeY * cos(angleZ);
+	const double cameraZAfterY = cameraXAfterZ * sin(angleY) + camera.position.z * cos(angleY);
+	const double cameraX = (cameraXAfterZ * cos(angleY) - camera.position.z * sin(angleY)) / scale;
 	const double cameraY = (cameraYAfterZ * cos(angleX) + cameraZAfterY * sin(angleX)) / scale;
 	const double cameraZ = (-cameraYAfterZ * sin(angleX) + cameraZAfterY * cos(angleX)) / scale;
 
@@ -280,6 +318,8 @@ int main()
 	if(!createWindow(1280, 720, "OpenGL", true, false)) return -1;
 	
 	init();
+	cout << "WASD: camera | Space/Ctrl: up/down | hold right mouse: look | Tab: camera/house" << endl;
+	cout << "Arrows + Q/E: rotate house | 1/2: scale house | R: reset house and camera | Esc: exit" << endl;
 	
 	/* Hlavní smyčka */
 	double delta = 0;

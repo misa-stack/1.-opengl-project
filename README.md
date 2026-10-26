@@ -4,17 +4,19 @@ Program vykresluje obrys 3D domu. Můžeš ho otáčet, posouvat a měnit jeho v
 Hrany za domem se vynechávají podle toho, odkud se na dům díváš.
 Veškerá geometrie se kreslí čárami přes funkci `cara()`.
 
-Tento dokument vysvětluje aktuální [src/main.cpp](src/main.cpp) a pomocnou funkci
-v [src_utils/utils.cpp](src_utils/utils.cpp). Příklady výpočtů můžeš ověřovat
-změnou hodnot v programu.
+Tento dokument vysvětluje aktuální [src/main.cpp](src/main.cpp) a vlastní kameru
+v [src_utils/camera.cpp](src_utils/camera.cpp). Pohled, perspektivu a ořezávání
+čar počítá náš C++ kód. Příklady můžeš ověřovat změnou hodnot v programu.
 
 ## 1. Soubory a spuštění
 
 | Soubor nebo adresář | K čemu slouží |
 | --- | --- |
 | `src/main.cpp` | Okno, vstup z klávesnice, transformace, viditelnost a kreslení domu. |
-| `src_utils/utils.h` | Deklarace funkce `makeFrustum()`, aby o ní věděl hlavní soubor. |
-| `src_utils/utils.cpp` | Implementace perspektivní projekce pomocí `glFrustum()`. |
+| `src_utils/camera.h` | Vlastní typy `Vec3` a `Camera`, bez grafických závislostí. |
+| `src_utils/camera.cpp` | Pohyb, rozhlížení, převod do pohledu, ořezávání a perspektiva. |
+| `tests/camera_test.cpp` | Číselné testy kamery, které nepotřebují grafické okno. |
+| `src_utils/utils.*` | Starší pomocník `makeFrustum()`; současná kamera ho nepoužívá. |
 | `src_utils/stb_image.*` | Přibalený kód pro načítání obrázků; současný dům ho nevyužívá. |
 | `include/`, `lib/`, `lib-mingw32/` | Přibalené závislosti a knihovny pro Windows. |
 | `data/` | Obrázky pro případné textury; nyní se na dům nenanáší. |
@@ -49,16 +51,22 @@ V Qt Creatoru otevři `CMakeLists.txt`.
 | Šipka nahoru / dolů | Zvýšení / snížení úhlu kolem X. |
 | Šipka doprava / doleva | Zvýšení / snížení úhlu kolem Y. |
 | E / Q | Zvýšení / snížení úhlu kolem Z. |
-| D / A | Posun doprava / doleva podél světové osy X. |
-| W / S | Posun nahoru / dolů podél světové osy Y. |
+| W / S | Pohyb kamery dopředu / dozadu ve směru pohledu. |
+| D / A | Pohyb kamery doprava / doleva vzhledem k pohledu. |
+| Mezerník / Ctrl | Pohyb kamery nahoru / dolů podél světové osy Y. |
+| Pravé tlačítko myši + pohyb myši | Rozhlížení kamerou. Po uvolnění se vrátí kurzor. |
+| Tab | Přepnutí WASD mezi ovládáním kamery a domu. |
 | 1 | Zvětšování: `scale += 0.01` každý snímek. |
 | 2 | Zmenšování: `scale -= 0.01` každý snímek. |
-| R | Obnovení nulové rotace a pozice a měřítka `1.0`. |
+| R | Reset domu i kamery, včetně směru pohledu. |
 | Escape | Ukončení programu. |
 
 Více kláves můžeš držet současně. Protilehlé směry rotace nebo pohybu se ruší.
 Při současném držení 1 a 2 vyhraje 1, protože druhá větev používá `else if`.
 Reset se provádí až po ostatních změnách, takže je v daném snímku přepíše.
+Výchozí režim WASD ovládá kameru. Po Tab se D/A používá pro světovou osu X domu
+a W/S pro jeho světovou osu Y. Zvolený režim se resetem R nemění. Rotace a
+škálování domu fungují v obou režimech; myš také vždy otáčí kamerou.
 
 Rotace a pohyb používají uplynulý čas. **Škálování ho zatím nepoužívá**, a proto
 je jeho rychlost závislá na FPS. Klávesy 1 a 2 v této verzi nenastavují pevné
@@ -71,7 +79,7 @@ předvolby velikosti.
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <math.h>
-#include "utils.h"
+#include "camera.h"
 ```
 
 - `iostream` poskytuje `cout`, `cerr` a `endl` pro výpisy do terminálu.
@@ -79,10 +87,11 @@ předvolby velikosti.
 - **GLEW** načítá dostupné funkce OpenGL po vytvoření grafického kontextu.
 - **GLFW** vytváří okno a grafický kontext a zpracovává klávesnici, myš a čas.
 - `math.h` poskytuje například `sin()`, `cos()`, `tan()`, `atan()` a `fmod()`.
-- `utils.h` zpřístupňuje naši pomocnou funkci `makeFrustum()`.
+- `camera.h` zpřístupňuje naši kameru a typ pro 3D souřadnice.
 
 GLM je v projektu přibalená matematická knihovna, ale současné transformace
-počítáme ručně a hlavní soubor ji přímo nepoužívá.
+počítáme ručně a hlavní soubor ji přímo nepoužívá. `camera.cpp` používá jen
+standardní knihovnu C++; nevolá OpenGL, GLFW ani GLM.
 
 `using namespace std;` dovoluje psát `cout` místo `std::cout`.
 Samotné `#include` vloží deklarace z hlavičky; sestavení ještě musí připojit
@@ -122,7 +131,11 @@ Funkce `createWindow()` postupně:
 `glfw_error_callback()` vypisuje chyby. `glfw_key_callback()` při stisku Escape
 nastaví `keep_running = false`. Parametr `key` říká kterou klávesu, `action`
 rozlišuje stisk, uvolnění nebo opakování; `scancode` a `mods` zde nevyužíváme.
-Callbacky myši jsou zaregistrované, ale jejich těla zatím nic nedělají.
+Při stisku Tab callback přepne cíl ovládání WASD. Callback tlačítka myši při
+držení pravého tlačítka zapne relativní rozhlížení a skryje kurzor pomocí GLFW.
+Předtím si uloží výchozí pozici, aby první pohyb nezpůsobil skok pohledu.
+Callback pohybu předává rozdíl souřadnic metodě `camera.look()`.
+Po uvolnění pravého tlačítka nebo ztrátě zaměření okna se kurzor uvolní.
 
 Podmíněná část pro Wayland řeší konkrétní výsledek GLEW: chybějící GLX displej
 na platformě, která používá EGL. Ostatní chyby GLEW vedou k uvolnění okna a
@@ -172,7 +185,7 @@ původní bod
   → rotace kolem Y
   → rotace kolem Z
   → posun ve světě
-  → glVertex3d()
+  → vrácení světového bodu jako Vec3
 ```
 
 Parametry `x`, `y`, `z` se předávají hodnotou. Jejich změna uvnitř funkce
@@ -254,73 +267,120 @@ Posun se přičítá až po rotaci. Dům se proto otáčí kolem svého modelov�
 na nové pozici. Kdyby se nejdřív posunul a pak otočil, otáčel by se i vektor
 posunu a dům by obíhal kolem světového počátku.
 
-Nakonec se celý 3D bod předá OpenGL:
+Nakonec se celý 3D bod vrátí volající funkci:
 
 ```cpp
-glVertex3d(translatedX, translatedY, zAfterY);
+return {translatedX, translatedY, zAfterY};
 ```
 
-Souřadnice Z se zachová až do grafické pipeline.
+`Vec3` je jednoduchý vlastní `struct` se třemi hodnotami `double`: `x`, `y`, `z`.
+Funkce `cara()` tak dostane oba konce úsečky ve světových souřadnicích a teprve
+potom je předá vlastní kameře.
 
-## 7. Perspektiva, kamera a `makeFrustum()`
+## 7. Vlastní kamera, perspektiva a ořezávání
 
-Transformovaný bod musí OpenGL převést na obrazovku. Nastavení vzniká v `init()`.
+Kamera má vlastní pozici `position`, vodorovný úhel `yaw` a svislý úhel `pitch`.
+Výchozí pozice je `(0, 0, 500)`, oba úhly jsou nulové a kamera se dívá podél
+záporné světové osy Z. Kladný yaw otáčí pohled doprava, kladný pitch nahoru.
 
-`glMatrixMode(GL_PROJECTION)` vybere projekční matici a `glLoadIdentity()` ji
-vrátí na jednotkovou matici. Potom `makeFrustum()` nastaví perspektivu.
+### Převod světa do pohledu: `Camera::toView()`
 
-Parametry `makeFrustum(fovY, aspectRatio, front, back)` znamenají:
-
-- `fovY`: svislý zorný úhel ve stupních.
-- `aspectRatio`: poměr šířky a výšky, zde `1280.0 / 720.0`.
-- `front`: vzdálenost blízké ořezávací roviny, zde `1.0`.
-- `back`: vzdálenost vzdálené ořezávací roviny, zde `5000.0`.
-
-`front` a `back` jsou parametry ořezávání a nesouvisejí se stejně pojmenovanými
-proměnnými viditelnosti stěn v `render()`.
-Pomocná funkce spočítá polovinu výšky a šířky blízké roviny:
+Nejdřív od bodu odečteme pozici kamery:
 
 ```text
-height = front * tan(fovY / 2)
-width = height * aspectRatio
+dx = světovéX - camera.position.x
+dy = světovéY - camera.position.y
+dz = světovéZ - camera.position.z
 ```
 
-Před `tan()` převádí stupně na radiány. Potom zavolá
-`glFrustum(-width, width, -height, height, front, back)`.
-
-Zorný úhel v hlavním programu je přibližně 121,89°. Vychází z:
-
-```cpp
-2.0 * atan(360.0 / 200.0) * 180.0 / pi
-```
-
-`360` je polovina výšky původního obrazu a `200` jeho původní ohnisková
-vzdálenost v pixelech. Tím se zachovalo stejné výchozí zobrazení jako při ruční
-projekci.
-
-Následuje výběr `GL_MODELVIEW`, opětovné `glLoadIdentity()` a:
-
-```cpp
-glTranslated(0.0, 0.0, -500.0);
-```
-
-Svět se pro pohled posune o 500 jednotek dozadu. Odpovídá to kameře na
-světové pozici `(0, 0, 500)`, která se dívá směrem k záporné ose Z.
-Pro bod před kamerou odpovídá výsledná projekce přibližně vztahům:
+Z yaw a pitch si sami spočítáme tři kolmé jednotkové směry kamery:
 
 ```text
-vzdálenost od kamery = 500 - světovéZ
-pixelX = 640 + světovéX * 200 / vzdálenost
-pixelY = 360 + světovéY * 200 / vzdálenost
+right   = (cos(yaw), 0, sin(yaw))
+up      = (-sin(yaw)*sin(pitch), cos(pitch), cos(yaw)*sin(pitch))
+forward = (sin(yaw)*cos(pitch), sin(pitch), -cos(yaw)*cos(pitch))
 ```
 
-Souřadnice `pixelY` zde roste odspodu nahoru. Menší vzdálenost znamená větší
-obraz stejného předmětu. Samotný výpočet nyní dělá OpenGL, včetně ořezávání
-geometrie podle projekčního objemu.
+Každou souřadnici pohledu získáme skalárním součinem rozdílu `(dx, dy, dz)`
+s odpovídajícím směrem. Skalární součin znamená sečíst součiny složek:
+
+```text
+viewX = dx*right.x + dy*right.y + dz*right.z
+viewY = dx*up.x + dy*up.y + dz*up.z
+depth = dx*forward.x + dy*forward.y + dz*forward.z
+```
+
+V našem typu `Vec3` se hloubka uloží do `z`. **Kladná hloubka je před kamerou**.
+Při výchozím pohledu proto vyjde `depth = 500 - světovéZ`.
+To je jiná souřadná soustava než svět, kde kladné Z míří k výchozí kameře.
+
+### Ořezávání úsečky před projekcí
+
+`Camera::projectLine()` nejprve převede oba konce do pohledu. Potom hledá část
+úsečky uvnitř šesti rovin: blízké, vzdálené, levé, pravé, dolní a horní.
+
+Platí:
+
+```text
+1 <= depth <= 5000
+-3.2*depth <= viewX <= 3.2*depth
+-1.8*depth <= viewY <= 1.8*depth
+```
+
+Čísla 3.2 a 1.8 jsou poloviny šířky a výšky obrazu dělené ohniskovou
+vzdáleností: `640 / 200` a `360 / 200`.
+Úsečku zapisujeme jako `A + t*(B-A)`, kde `t` jde od 0 do 1. Pro každou rovinu
+omezíme přípustný interval `t`. Pokud leží oba konce za stejnou rovinou,
+úsečku rovnou vynecháme. Pokud ji protíná, průsečík má parametr:
+
+```text
+t = hodnotaRoviny(A) / (hodnotaRoviny(A) - hodnotaRoviny(B))
+```
+
+Kladná hodnota roviny značí vnitřek. Ořezávání se provede **před dělením
+hloubkou**, takže můžeme bezpečně zpracovat i úsečku procházející kamerou.
+
+### Ruční perspektivní dělení
+
+Z oříznutých bodů vypočítáme normalizované souřadnice:
+
+```text
+normalizedX = viewX * 200 / (depth * 640)
+normalizedY = viewY * 200 / (depth * 360)
+```
+
+Rozsah od -1 do 1 odpovídá celé šířce nebo výšce viewportu. Střed je nula.
+Menší hloubka dává větší obraz stejně velkého předmětu. Výchozí ohnisková
+vzdálenost 200 zachovává původní velikost domu na obrazovce.
+Také hloubku sami převedeme do rozsahu -1 až 1:
+
+```text
+normalizedZ = (far + near)/(far - near) - 2*far*near/((far - near)*depth)
+```
+
+Na blízké rovině vyjde -1 a na vzdálené +1. Převod je nelineární, aby hloubka
+odpovídala perspektivě také podél vykreslených úseček.
+
+`init()` ponechává projekční i modelview matici jednotkovou. Nepoužívá
+`makeFrustum()`, `glFrustum()`, `glTranslated()`, GLM ani `lookAt`.
+OpenGL dostává hotové normalizované konce čar a převádí je na obrazové fragmenty.
 
 `glViewport()` ponechává pevnou oblast 1280 × 720 uprostřed framebufferu.
 Program tedy při změně velikosti okna scénu automaticky nepřizpůsobuje;
 v menším okně může být část obrazu oříznutá.
+
+### Pohyb a rozhlížení
+
+`Camera::move()` složí pohyb z pravého a dopředného směru a světové osy Y.
+Výsledný vektor vydělí jeho délkou, takže držení více směrů nezvýší rychlost.
+Potom jej násobí rychlostí 200 jednotek za sekundu a časem `dt`.
+Protože dopředný směr zahrnuje i pitch, W při pohledu vzhůru také stoupá:
+jde o volně létající kameru bez gravitace a kolizí.
+
+`Camera::look()` násobí rozdíl pixelů myši citlivostí 0.0025 radiánu na pixel.
+Vodorovný pohyb mění yaw. Svislá souřadnice myši roste dolů, proto se od pitch
+odečítá. Pitch je omezen na ±89°, takže se kamera nepřeklopí přes svislý směr.
+`Camera::reset()` vrátí pozici `(0, 0, 500)` i oba úhly na výchozí hodnoty.
 
 ## 8. Klávesnice a čas `dt`
 
@@ -355,8 +415,9 @@ Pohyb nezrychlí jen tím, že počítač vykreslí více snímků.
 
 `fmod(angle, 2.0 * pi)` omezuje velikost úhlu pomocí zbytku po dělení jednou
 otáčkou. Záporný úhel může zůstat záporný; pro `sin()` a `cos()` to nevadí.
-Při diagonálním pohybu se každá osa aktualizuje zvlášť, takže výsledná rychlost
-po diagonále je větší než při pohybu jen po jedné ose.
+Pohyb kamery je normalizovaný, takže diagonála není rychlejší. Ve starším
+režimu pohybu domu se každá osa stále aktualizuje zvlášť, takže je jeho
+diagonální pohyb rychlejší než pohyb pouze po jedné ose.
 
 ## 9. Proč nejsou vidět zadní hrany
 
@@ -375,8 +436,8 @@ stěna je vždy `z = 175`. Po otočení domu už tato rovnice ve světových
 souřadnicích neplatí.
 
 Místo otáčení všech rovnic převedeme kameru do původních souřadnic domu.
-To vyjadřují proměnné `cameraX`, `cameraY`, `cameraZ`. Nejde o nové ovládání
-kamery; jsou to pomocné souřadnice pro výpočet viditelnosti.
+To vyjadřují proměnné `cameraX`, `cameraY`, `cameraZ`. Jsou to pomocné
+souřadnice stejné pohyblivé kamery, určené pro výpočet viditelnosti.
 
 Pro bod domu používáme:
 
@@ -390,19 +451,22 @@ Pro opačný převod kamery musíme kroky obrátit:
 odečtení posunu → opačná Z → opačná Y → opačná X → dělení měřítkem
 ```
 
-Po odečtení posunu domu má kamera souřadnice `(-positionX, -positionY, 500)`.
+Po odečtení posunu domu má kamera souřadnice
+`(relativeX, relativeY, camera.position.z)`, kde
+`relativeX = camera.position.x - positionX` a
+`relativeY = camera.position.y - positionY`.
 Opačná rotace kolem Z z nich udělá:
 
 ```text
-cameraXAfterZ = -positionX * cos(angleZ) - positionY * sin(angleZ)
-cameraYAfterZ =  positionX * sin(angleZ) - positionY * cos(angleZ)
+cameraXAfterZ = relativeX * cos(angleZ) + relativeY * sin(angleZ)
+cameraYAfterZ = -relativeX * sin(angleZ) + relativeY * cos(angleZ)
 ```
 
 Opačná rotace kolem Y:
 
 ```text
-cameraZAfterY = cameraXAfterZ * sin(angleY) + 500 * cos(angleY)
-cameraX = (cameraXAfterZ * cos(angleY) - 500 * sin(angleY)) / scale
+cameraZAfterY = cameraXAfterZ * sin(angleY) + camera.position.z * cos(angleY)
+cameraX = (cameraXAfterZ * cos(angleY) - camera.position.z * sin(angleY)) / scale
 ```
 
 Opačná rotace kolem X a dokončení dělení měřítkem:
@@ -414,6 +478,8 @@ cameraZ = (-cameraYAfterZ * sin(angleX) + cameraZAfterY * cos(angleX)) / scale
 
 Při výchozím nastavení vyjde `(0, 0, 500)`. Po otočení domu o 180° kolem Y
 vyjde přibližně `(0, 0, -500)`, takže vidíme zadní stranu modelu.
+Výpočet používá stejnou světovou pozici kamery jako projekce. Yaw a pitch zde
+nepotřebujeme: určují výřez pohledu, ale ne to, na které straně stěny stojíme.
 
 ### Podmínky viditelnosti stěn
 
@@ -455,7 +521,7 @@ Dveře a okna patří jen přední stěně, proto jsou jejich čáry uvnitř `if
 Jsou to nakreslené obdélníky na stěně, nikoli skutečné otvory do interiéru.
 
 Pokud kamera nevychází ven za žádnou z rovin, kód ji považuje za umístěnou
-uvnitř domu nebo na jeho hranici. Potom dovolí všechny stěny a OpenGL dál
+uvnitř domu nebo na jeho hranici. Potom dovolí všechny stěny a vlastní kamera
 ořízne čáry mimo pohledový objem.
 
 Tento postup využívá konkrétní konvexní tvar domu. U domu ve tvaru L nebo při
@@ -467,13 +533,18 @@ bylo by nutné řešit i částečné zakrytí jednotlivých hran.
 ```cpp
 void cara(int x1, int y1, int z1, int x2, int y2, int z2)
 {
-    bod(x1, y1, z1);
-    bod(x2, y2, z2);
+    Vec3 first, second;
+    if (camera.projectLine(bod(x1, y1, z1), bod(x2, y2, z2), first, second))
+    {
+        glVertex3d(first.x, first.y, first.z);
+        glVertex3d(second.x, second.y, second.z);
+    }
 }
 ```
 
-Funkce předá dva transformované konce úsečky OpenGL. V aktuálním rozhraní musí
-být volána uvnitř:
+Funkce nejprve získá dva světové body, pak je vlastní kamerou ořízne a promítne.
+Pokud je úsečka celá mimo pohled, nic nevykreslí. Jinak předá oba normalizované
+konce OpenGL. V aktuálním rozhraní musí být volána uvnitř:
 
 ```cpp
 glColor3ub(0, 0, 0);
@@ -532,7 +603,7 @@ Přibližně po třech sekundách se statistiky vypíšou a počítadla vynuluj�
   nedělilo nulou.
 - **Záporné měřítko:** není zakázané; převrátí model přes počátek.
 - **Velikost bez limitu:** škálování může přesunout části modelu za kameru
-  nebo přes ořezávací roviny. OpenGL je potom ořízne.
+  nebo přes ořezávací roviny. Náš `Camera::projectLine()` je potom ořízne.
 - **Pevný viewport:** menší okno neznamená automatické zmenšení domu.
 - **Viditelnost:** roviny odpovídají právě uvedeným rozměrům domu. Při změně
   geometrie je nutné upravit i související podmínky.
@@ -556,18 +627,33 @@ Tyto body popisují současný kód; samotný tento dokument je neopravuje.
 | `||` | Logické „nebo“; stačí jedna podmínka. |
 | `return` | Ukončení aktuální funkce, případně s návratovou hodnotou. |
 | `#if`, `#endif` | Podmíněný překlad, například části specifické pro Wayland. |
+| `struct` | Vlastní datový typ, například souřadnice `Vec3` nebo kamera `Camera`. |
+| `Vec3 &` | Odkaz na bod; `projectLine()` tak uloží výsledek do předané proměnné. |
+| `Camera::move` | Metoda `move()` patřící typu `Camera`. |
 
 ## 14. Jak si porozumění ověřit
 
-Po změnách sestav program pomocí `make` a zkoušej po jednom:
+Matematické testy kamery spustíš bez otevírání grafického okna:
+
+```sh
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+Ověřují například směry pohledu, konstantní rychlost, perspektivu a ořezávání
+úseček před kamerou i přes všech šest rovin. Nenahrazují vyzkoušení skutečné
+myši a okna. Po `make` a `./opengl` zkoušej po jednom:
 
 1. Ve výchozím pohledu vidíš dveře a okna, ale ne zadní hrany domu.
 2. Po přibližně půlotáčce kolem Y zmizí dveře i okna a vidíš zadní stranu.
 3. Při pohledu šikmo vidíš společnou hranu dvou viditelných ploch.
 4. Při pohledu zespodu jsou viditelné obvodové hrany podlahy.
-5. Posuň dům pomocí WASD a otoč ho: posun se nemá změnit v obíhání počátku.
-6. Změň velikost a stiskni R: vrátí se pozice, rotace i měřítko.
-7. Ověř zavření přes Escape i zavírací tlačítko okna.
+5. Posuň kameru pomocí WASD a Space/Ctrl; správně se mění i viditelnost hran.
+6. Podrž pravé tlačítko myši a rozhlédni se. Po uvolnění nebo přepnutí okna
+   se musí vrátit volný kurzor.
+7. Přepni Tab, posuň dům přes WASD a otoč ho: posun se nemá změnit v obíhání počátku.
+8. Změň velikost a stiskni R: vrátí se dům i poloha a směr kamery.
+9. Ověř zavření přes Escape i zavírací tlačítko okna.
 
 Vlastní příklady pro procvičení: na papíře otoč bod `(100, 0, 0)` o 90° kolem
 každé osy zvlášť, spočítej viditelnost stěn pro kameru `(0, 0, -500)` a odvoď

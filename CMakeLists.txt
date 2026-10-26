@@ -24,6 +24,8 @@ endif()
 
 add_executable(opengl
     src/main.cpp
+    src_utils/camera.cpp
+    src_utils/camera.h
     src_utils/utils.cpp
     src_utils/utils.h
     src_utils/stb_image.cpp
@@ -45,3 +47,11 @@ add_custom_target(opengl_data ALL
     COMMENT "Copying OpenGL assets"
 )
 add_dependencies(opengl opengl_data)
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(camera_tests tests/camera_test.cpp src_utils/camera.cpp)
+    target_compile_features(camera_tests PRIVATE cxx_std_17)
+    target_include_directories(camera_tests PRIVATE src_utils)
+    add_test(NAME camera_math COMMAND camera_tests)
+endif()
