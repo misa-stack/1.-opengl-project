@@ -5,7 +5,7 @@ Hrany za domem se vynechávají podle toho, odkud se na dům díváš.
 Veškerá geometrie se kreslí čárami přes funkci `cara()`.
 
 Tento dokument vysvětluje aktuální [src/main.cpp](src/main.cpp) a vlastní kameru
-v [src_utils/camera.cpp](src_utils/camera.cpp). Pohled, perspektivu a ořezávání
+v [src/camera.cpp](src/camera.cpp). Pohled, perspektivu a ořezávání
 čar počítá náš C++ kód. Příklady můžeš ověřovat změnou hodnot v programu.
 
 ## 1. Soubory a spuštění
@@ -13,11 +13,11 @@ v [src_utils/camera.cpp](src_utils/camera.cpp). Pohled, perspektivu a ořezává
 | Soubor nebo adresář | K čemu slouží |
 | --- | --- |
 | `src/main.cpp` | Okno, vstup z klávesnice, transformace, viditelnost a kreslení domu. |
-| `src_utils/camera.h` | Vlastní typy `Vec3` a `Camera`, bez grafických závislostí. |
-| `src_utils/camera.cpp` | Pohyb, rozhlížení, převod do pohledu, ořezávání a perspektiva. |
+| `src/camera.h` | Vlastní typy `Vec3` a `Camera`, bez grafických závislostí. |
+| `src/camera.cpp` | Pohyb, rozhlížení, převod do pohledu, ořezávání a perspektiva. |
 | `tests/camera_test.cpp` | Číselné testy kamery, které nepotřebují grafické okno. |
-| `src_utils/utils.*` | Starší pomocník `makeFrustum()`; současná kamera ho nepoužívá. |
-| `src_utils/stb_image.*` | Přibalený kód pro načítání obrázků; současný dům ho nevyužívá. |
+| `src/utils.*` | Starší pomocník `makeFrustum()`; současná kamera ho nepoužívá. |
+| `src/stb_image.*` | Přibalený kód pro načítání obrázků; současný dům ho nevyužívá. |
 | `include/`, `lib/`, `lib-mingw32/` | Přibalené závislosti a knihovny pro Windows. |
 | `data/` | Obrázky pro případné textury; nyní se na dům nenanáší. |
 | `CMakeLists.txt` | Určuje zdrojové soubory, C++17 a připojené knihovny. |

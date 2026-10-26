@@ -287,8 +287,10 @@ include/glm/test/gtx/gtx_vector_angle.cpp
 include/glm/test/gtx/gtx_vector_query.cpp
 include/glm/test/gtx/gtx_wrap.cpp
 include/glm/util/conan-package/test_package/main.cpp
+src/camera.cpp
+src/camera.h
 src/main.cpp
-src_utils/stb_image.cpp
-src_utils/stb_image.h
-src_utils/utils.cpp
-src_utils/utils.h
+src/stb_image.cpp
+src/stb_image.h
+src/utils.cpp
+src/utils.h

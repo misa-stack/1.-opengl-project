@@ -35,7 +35,7 @@ endif
 
 COMPILER = g++
 LINKER = g++
-MODULES = src src_utils
+MODULES = src
 SOURCE_DIR = .
 TEMP_DIR = tmp
 TARGET = opengl

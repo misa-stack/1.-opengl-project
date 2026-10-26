@@ -24,12 +24,12 @@ endif()
 
 add_executable(opengl
     src/main.cpp
-    src_utils/camera.cpp
-    src_utils/camera.h
-    src_utils/utils.cpp
-    src_utils/utils.h
-    src_utils/stb_image.cpp
-    src_utils/stb_image.h
+    src/camera.cpp
+    src/camera.h
+    src/utils.cpp
+    src/utils.h
+    src/stb_image.cpp
+    src/stb_image.h
 )
 target_compile_features(opengl PRIVATE cxx_std_17)
 set_target_properties(opengl PROPERTIES
@@ -37,7 +37,7 @@ set_target_properties(opengl PROPERTIES
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS OFF
 )
-target_include_directories(opengl PRIVATE src src_utils include/glm)
+target_include_directories(opengl PRIVATE src include/glm)
 target_link_libraries(opengl PRIVATE GLEW::GLEW glfw OpenGL::GL)
 
 # Keep relative data/ paths usable from Qt Creator's build-directory run target.
@@ -50,8 +50,8 @@ add_dependencies(opengl opengl_data)
 
 include(CTest)
 if(BUILD_TESTING)
-    add_executable(camera_tests tests/camera_test.cpp src_utils/camera.cpp)
+    add_executable(camera_tests tests/camera_test.cpp src/camera.cpp)
     target_compile_features(camera_tests PRIVATE cxx_std_17)
-    target_include_directories(camera_tests PRIVATE src_utils)
+    target_include_directories(camera_tests PRIVATE src)
     add_test(NAME camera_math COMMAND camera_tests)
 endif()
