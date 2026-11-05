@@ -94,7 +94,24 @@ void init()
 
 void bod(int x, int y, int z)
 {
-	glVertex2i(x*200/(500-z) +640, y*200/(500-z) +360);
+	// Uhel otoceni kolem kazde osy ve stupnich - zmen tyto hodnoty.
+	const double angleX = 0.0;
+	const double angleY = 0.0;
+	const double angleZ = 0.0;
+	const double pi = 3.14159265358979323846;
+	const double radiansX = angleX * pi / 180.0;
+	const double radiansY = angleY * pi / 180.0;
+	const double radiansZ = angleZ * pi / 180.0;
+
+	const double yAfterX = y * cos(radiansX) - z * sin(radiansX);
+	const double zAfterX = y * sin(radiansX) + z * cos(radiansX);
+	const double xAfterY = x * cos(radiansY) + zAfterX * sin(radiansY);
+	const double zAfterY = -x * sin(radiansY) + zAfterX * cos(radiansY);
+	const double rotatedX = xAfterY * cos(radiansZ) - yAfterX * sin(radiansZ);
+	const double rotatedY = xAfterY * sin(radiansZ) + yAfterX * cos(radiansZ);
+
+	glVertex2i(static_cast<int>(rotatedX*200/(500-zAfterY)) +640,
+		static_cast<int>(rotatedY*200/(500-zAfterY)) +360);
 }
 /*
  *
