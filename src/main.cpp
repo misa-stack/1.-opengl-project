@@ -94,6 +94,7 @@ void init()
 
 void bod(int x, int y, int z)
 {
+	.
 	const double angleX = 0.0;
 	const double angleY = 0.0;
 	const double angleZ = 0.0;
