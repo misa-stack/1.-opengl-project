@@ -2,6 +2,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <math.h>
+#include <glm/glm.hpp>
+#include <glm/gtx/matrix_transform_2d.hpp>
 
 #include "utils.h"
 
@@ -92,9 +94,20 @@ void init()
 	glOrtho(0, 1280, 0, 720, -1, 1);
 }
 
+
+
 void bod(int x, int y, int z)
 {
-	.
+	const double positionX = 100.0;
+	const double positionY = 0.0;
+	const double scaleX = 1.0;
+	const double scaleY = 1.0;
+	const double angle = 60.0;
+	const glm::dmat3 translation = glm::translate(glm::dmat3(1.0), glm::dvec2(positionX, positionY));
+	const glm::dmat3 rotation = glm::rotate(glm::dmat3(1.0), glm::radians(angle));
+	const glm::dmat3 scaling = glm::scale(glm::dmat3(1.0), glm::dvec2(scaleX, scaleY));
+	const glm::dmat3 modelMatrix = translation * rotation * scaling;
+
 	const double angleX = 0.0;
 	const double angleY = 0.0;
 	const double angleZ = 0.0;
@@ -102,16 +115,12 @@ void bod(int x, int y, int z)
 	const double radiansX = angleX * pi / 180.0;
 	const double radiansY = angleY * pi / 180.0;
 	const double radiansZ = angleZ * pi / 180.0;
+	// Nejprve perspektiva; treti souradnice 1 umoznuje posun matici 3x3.
+	const glm::dvec3 projected(x*200.0/(500-z), y*200.0/(500-z), 1.0);
+	const glm::dvec3 transformed = modelMatrix * projected;
 
-	const double yAfterX = y * cos(radiansX) - z * sin(radiansX);
-	const double zAfterX = y * sin(radiansX) + z * cos(radiansX);
-	const double xAfterY = x * cos(radiansY) + zAfterX * sin(radiansY);
-	const double zAfterY = -x * sin(radiansY) + zAfterX * cos(radiansY);
-	const double rotatedX = xAfterY * cos(radiansZ) - yAfterX * sin(radiansZ);
-	const double rotatedY = xAfterY * sin(radiansZ) + yAfterX * cos(radiansZ);
-
-	glVertex2i(static_cast<int>(rotatedX*200/(500-zAfterY)) +640,
-		static_cast<int>(rotatedY*200/(500-zAfterY)) +360);
+	// Stred obrazovky pridame az po transformaci, aby se objekt otacel kolem (0, 0).
+	glVertex2i(static_cast<int>(transformed.x) +640, static_cast<int>(transformed.y) +360);
 }
 /*
  *
