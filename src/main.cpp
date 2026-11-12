@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_transform_2d.hpp>
 
-#include "utils.h"
+#include "../src_utils/utils.h"
 
 using namespace std;
 
@@ -91,23 +91,18 @@ void init()
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, 1280, 0, 720, -1, 1);
+	makeFrustum(45, 1280.0 / 720, 0.1, 1000);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glTranslated(0,0,-10);
+	glRotated(90,1,1,0);
 }
 
 
 
 void bod(int x, int y, int z)
 {
-	const double positionX = 100.0;
-	const double positionY = 0.0;
-	const double scaleX = 1.0;
-	const double scaleY = 1.0;
-	const double angle = 60.0;
-	const glm::dmat3 translation = glm::translate(glm::dmat3(1.0), glm::dvec2(positionX, positionY));
-	const glm::dmat3 rotation = glm::rotate(glm::dmat3(1.0), glm::radians(angle));
-	const glm::dmat3 scaling = glm::scale(glm::dmat3(1.0), glm::dvec2(scaleX, scaleY));
-	const glm::dmat3 modelMatrix = translation * rotation * scaling;
-
 	const double angleX = 0.0;
 	const double angleY = 0.0;
 	const double angleZ = 0.0;
@@ -115,12 +110,16 @@ void bod(int x, int y, int z)
 	const double radiansX = angleX * pi / 180.0;
 	const double radiansY = angleY * pi / 180.0;
 	const double radiansZ = angleZ * pi / 180.0;
-	// Nejprve perspektiva; treti souradnice 1 umoznuje posun matici 3x3.
-	const glm::dvec3 projected(x*200.0/(500-z), y*200.0/(500-z), 1.0);
-	const glm::dvec3 transformed = modelMatrix * projected;
 
-	// Stred obrazovky pridame az po transformaci, aby se objekt otacel kolem (0, 0).
-	glVertex2i(static_cast<int>(transformed.x) +640, static_cast<int>(transformed.y) +360);
+	const double yAfterX = y * cos(radiansX) - z * sin(radiansX);
+	const double zAfterX = y * sin(radiansX) + z * cos(radiansX);
+	const double xAfterY = x * cos(radiansY) + zAfterX * sin(radiansY);
+	const double zAfterY = -x * sin(radiansY) + zAfterX * cos(radiansY);
+	const double rotatedX = xAfterY * cos(radiansZ) - yAfterX * sin(radiansZ);
+	const double rotatedY = xAfterY * sin(radiansZ) + yAfterX * cos(radiansZ);
+
+//	glVertex2i(static_cast<int>(rotatedX*200/(500-zAfterY)) +640,static_cast<int>(rotatedY*200/(500-zAfterY)) +360);
+	glVertex3f(x, y, z);
 }
 /*
  *
@@ -136,11 +135,16 @@ void bod(int x, int y, int z)
 void render(double dt)
 {
 	//glBegin(GL_LINE_STRIP);
+	glMatrixMode(GL_MODELVIEW);
+
+	glRotated(0.99,1,1,1);
 
 	glBegin(GL_LINE_STRIP);
 	int r = 200;
 	int x = 640;
 	int y = 360;
+
+
 	for(int z = 0;z <r;z++)
 	{
 		glColor3ub(255, 0, 0);
@@ -164,28 +168,26 @@ void render(double dt)
 
 
 	glBegin(GL_LINE_STRIP);
-	glColor3ub(0, 0, 0);
+	glColor3f(0, 0, 0);
 
-	bod(100,100,100);
-	bod(-100,100,100);
-	bod(-100,-100,100);
-	bod(100,-100,100);
-	bod(100,100,100);
-	bod(100,100,-100);
-	bod(-100,100,-100);
-	bod(-100,-100,-100);
-	bod(100,-100,-100);
-	bod(100,100,-100);
+	bod(1,1,1);
+	bod(-1,1,1);
+	bod(-1,-1,1);
+	bod(1,-1,1);
+	bod(1,1,1);
+	bod(1,1,-1);
+	bod(-1,1,-1);
+	bod(-1,-1,-1);
+	bod(1,-1,-1);
+	bod(1,1,-1);
 	glEnd();
 	glBegin(GL_LINE_STRIP);
-	bod(-100,100,100);
-	bod(-100,100,-100);
-	bod(-100,-100,-100);
-	bod(-100,-100,100);
-	bod(100,-100,100);
-	bod(100,-100,-100);
-
-
+	bod(-1,1,1);
+	bod(-1,1,-1);
+	bod(-1,-1,-1);
+	bod(-1,-1,1);
+	bod(1,-1,1);
+	bod(1,-1,-1);
 	glEnd();
 
 
