@@ -1,0 +1,38 @@
+[
+{
+  "directory": "/home/krbecm/opengl/build",
+  "command": "/usr/bin/c++  -I/home/krbecm/opengl/src -I/home/krbecm/opengl/include/glm -g -std=c++17 -o CMakeFiles/opengl.dir/src/main.cpp.o -c /home/krbecm/opengl/src/main.cpp",
+  "file": "/home/krbecm/opengl/src/main.cpp",
+  "output": "CMakeFiles/opengl.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/krbecm/opengl/build",
+  "command": "/usr/bin/c++  -I/home/krbecm/opengl/src -I/home/krbecm/opengl/include/glm -g -std=c++17 -o CMakeFiles/opengl.dir/src/camera.cpp.o -c /home/krbecm/opengl/src/camera.cpp",
+  "file": "/home/krbecm/opengl/src/camera.cpp",
+  "output": "CMakeFiles/opengl.dir/src/camera.cpp.o"
+},
+{
+  "directory": "/home/krbecm/opengl/build",
+  "command": "/usr/bin/c++  -I/home/krbecm/opengl/src -I/home/krbecm/opengl/include/glm -g -std=c++17 -o CMakeFiles/opengl.dir/src/utils.cpp.o -c /home/krbecm/opengl/src/utils.cpp",
+  "file": "/home/krbecm/opengl/src/utils.cpp",
+  "output": "CMakeFiles/opengl.dir/src/utils.cpp.o"
+},
+{
+  "directory": "/home/krbecm/opengl/build",
+  "command": "/usr/bin/c++  -I/home/krbecm/opengl/src -I/home/krbecm/opengl/include/glm -g -std=c++17 -o CMakeFiles/opengl.dir/src/stb_image.cpp.o -c /home/krbecm/opengl/src/stb_image.cpp",
+  "file": "/home/krbecm/opengl/src/stb_image.cpp",
+  "output": "CMakeFiles/opengl.dir/src/stb_image.cpp.o"
+},
+{
+  "directory": "/home/krbecm/opengl/build",
+  "command": "/usr/bin/c++  -I/home/krbecm/opengl/src -g -o CMakeFiles/camera_tests.dir/tests/camera_test.cpp.o -c /home/krbecm/opengl/tests/camera_test.cpp",
+  "file": "/home/krbecm/opengl/tests/camera_test.cpp",
+  "output": "CMakeFiles/camera_tests.dir/tests/camera_test.cpp.o"
+},
+{
+  "directory": "/home/krbecm/opengl/build",
+  "command": "/usr/bin/c++  -I/home/krbecm/opengl/src -g -o CMakeFiles/camera_tests.dir/src/camera.cpp.o -c /home/krbecm/opengl/src/camera.cpp",
+  "file": "/home/krbecm/opengl/src/camera.cpp",
+  "output": "CMakeFiles/camera_tests.dir/src/camera.cpp.o"
+}
+]

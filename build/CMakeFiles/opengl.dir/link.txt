@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/opengl.dir/src/main.cpp.o CMakeFiles/opengl.dir/src/camera.cpp.o CMakeFiles/opengl.dir/src/utils.cpp.o CMakeFiles/opengl.dir/src/stb_image.cpp.o -o opengl  /usr/lib64/libGLEW.so /usr/lib64/libglfw.so.3.3 /usr/lib64/libGLX.so /usr/lib64/libOpenGL.so 

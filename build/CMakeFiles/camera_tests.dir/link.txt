@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/camera_tests.dir/tests/camera_test.cpp.o CMakeFiles/camera_tests.dir/src/camera.cpp.o -o camera_tests 

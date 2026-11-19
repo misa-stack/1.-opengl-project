@@ -93,10 +93,6 @@ void init()
 	glLoadIdentity();
 	makeFrustum(45, 1280.0 / 720, 0.1, 1000);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glTranslated(0,0,-10);
-	glRotated(90,1,1,0);
 }
 
 
@@ -118,7 +114,7 @@ void bod(int x, int y, int z)
 	const double rotatedX = xAfterY * cos(radiansZ) - yAfterX * sin(radiansZ);
 	const double rotatedY = xAfterY * sin(radiansZ) + yAfterX * cos(radiansZ);
 
-//	glVertex2i(static_cast<int>(rotatedX*200/(500-zAfterY)) +640,static_cast<int>(rotatedY*200/(500-zAfterY)) +360);
+	//	glVertex2i(static_cast<int>(rotatedX*200/(500-zAfterY)) +640,static_cast<int>(rotatedY*200/(500-zAfterY)) +360);
 	glVertex3f(x, y, z);
 }
 /*
@@ -132,12 +128,23 @@ void bod(int x, int y, int z)
 */
 
 
+float alpha = 0;
+
 void render(double dt)
 {
-	//glBegin(GL_LINE_STRIP);
 	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glTranslated(0,0,-10);
+	glRotated(alpha,0,1,0);
+	alpha += 1;
+	glDepthFunc(GL_LEQUAL);
+	glEnable(GL_DEPTH_TEST);
 
-	glRotated(0.99,1,1,1);
+	//glBegin(GL_LINE_STRIP);
+
+	//glMatrixMode(GL_MODELVIEW);
+	//glRotated(0.99,0,0,0);
+	//glLoadIdentity();
 
 	glBegin(GL_LINE_STRIP);
 	int r = 200;
@@ -145,7 +152,7 @@ void render(double dt)
 	int y = 360;
 
 
-	for(int z = 0;z <r;z++)
+	/*for(int z = 0;z <r;z++)
 	{
 		glColor3ub(255, 0, 0);
 		glVertex2i(x+z, y);
@@ -161,34 +168,93 @@ void render(double dt)
 	    cara(x-z,y,x-z,y-sqrt(r*r-z*z));
 	    cara(x-z,y,x-z,y+sqrt(r*r-z*z));
 	    cara(x+z,y,x+z,y+sqrt(r*r-z*z));
-	    */
-	}
+
+	}*/
 
 	glEnd();
 
 
-	glBegin(GL_LINE_STRIP);
+	glBegin(GL_QUADS);
 	glColor3f(0, 0, 0);
+	glVertex3f(1,1,1);
+	glVertex3f(1,-1,1);
+	glVertex3f(-1,-1,1);
+	glVertex3f(-1,1,1);
 
-	bod(1,1,1);
-	bod(-1,1,1);
-	bod(-1,-1,1);
-	bod(1,-1,1);
-	bod(1,1,1);
-	bod(1,1,-1);
-	bod(-1,1,-1);
-	bod(-1,-1,-1);
-	bod(1,-1,-1);
-	bod(1,1,-1);
-	glEnd();
-	glBegin(GL_LINE_STRIP);
-	bod(-1,1,1);
-	bod(-1,1,-1);
-	bod(-1,-1,-1);
-	bod(-1,-1,1);
-	bod(1,-1,1);
-	bod(1,-1,-1);
-	glEnd();
+	glColor3f(0, 0, 1);
+	glVertex3f(1,1,-1);
+	glVertex3f(1,-1,-1);
+	glVertex3f(-1,-1,-1);
+	glVertex3f(-1,1,-1);
+
+
+
+	glColor3f(0.5,0.5,0);
+	glVertex3f(1,1,1);
+	glVertex3f(1,1,-1);
+	glVertex3f(1,-1,-1);
+	glVertex3f(1,-1,1);
+
+	glColor3f(1,0,0);
+	glVertex3f(-1,1,1);
+	glVertex3f(-1,1,-1);
+	glVertex3f(-1,-1,-1);
+	glVertex3f(-1,-1,1);
+
+
+	glColor3f(0, 1, 0);
+	glVertex3f(1,-1,1);
+	glVertex3f(1,-1,-1);
+	glVertex3f(-1,-1,-1);
+	glVertex3f(-1,-1,1);
+
+	glColor3f(1,0,1);
+	glVertex3f(1,1,1);
+	glVertex3f(1,1,-1);
+	glVertex3f(-1,1,-1);
+	glVertex3f(-1,1,1);
+
+			/*
+			bod(1,1,1);
+			bod(-1,1,1);
+			bod(-1,-1,1);
+			bod(1,-1,1);
+			bod(1,1,1);
+			bod(1,1,-1);
+			bod(-1,1,-1);
+			bod(-1,-1,-1);
+			bod(1,-1,-1);
+			bod(1,1,-1);
+			*/
+			glEnd();
+			glBegin(GL_TRIANGLES);
+			glColor3f(0,0,0);
+
+			glVertex3f(1,1,1);
+			glVertex3f(-1,1,1);
+			glVertex3f(0,2,0);
+
+			glColor3f(0, 0, 1);
+			glVertex3f(1,1,-1);
+			glVertex3f(-1,1,-1);
+			glVertex3f(0,2,0);
+
+			glColor3f(1, 0, 0);
+			glVertex3f(-1,1,1);
+			glVertex3f(-1,1,-1);
+			glVertex3f(0,2,0);
+
+			glColor3f(0.5,0.5,0);
+			glVertex3f(1,1,1);
+			glVertex3f(1,1,-1);
+			glVertex3f(0,2,0);
+
+
+
+glEnd();
+
+
+
 
 
 }
